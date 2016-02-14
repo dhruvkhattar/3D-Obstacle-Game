@@ -14,32 +14,62 @@ float width = 1280.0f;
 float height = 720.0f;
 float size = 7200.0f;
 float gsize = 75.0f;
-float psize = 5.0f;
+float psize = 1.0f;
 float bsize = 5.0f;
 float depth = 5.0f;
 float bdepth = 10.0f;
 float vz = 0.0f;
+float xz = 45.0f;
+float frot = 45.0f;
 float zoom = 0.5f;
 float pan = 0;
-float g = 0.12;
+float g = 0.07f;
+float speed = 0.0f;
+float bspeed = 0.5f;
 int lives = 8;
-bool mouse_drag = false;
+float drag_x = 0;
 bool drag_start = false;
+bool mouse_drag = false;
 int score = 0;
-float drag_x;
 
-int maze[10][10] = { 
+float maze[10][10] = { 
     {1,1,1,0,1,1,1,0,0,1},
-    {1,0,1,0,1,0,1,1,1,1},
-    {1,1,1,0,1,0,0,0,1,1},
-    {1,0,1,1,1,1,1,0,1,0},
-    {1,1,1,0,1,0,1,1,1,1},
-    {1,0,1,0,1,1,1,0,1,0},
-    {0,1,1,0,1,0,1,0,1,1},
-    {1,1,1,1,1,0,1,1,1,0},
-    {1,0,1,0,1,1,1,0,1,0},
-    {1,1,1,0,1,1,1,0,1,1}
+    {1,0,1,0,1,0,1.5,1.5,1,1},
+    {1,1,1,0,1.5,0,0,0,1,1},
+    {1,0,1,1,2,1,1,0,1,0},
+    {1,1,1.5,0,1.5,0,1,1,1,1},
+    {1,0,1.5,0,1,1,1.5,0,1,0},
+    {0,1,1,0,1,0,1.5,0,1,1},
+    {1,1,1,1,1.5,0,1,1,1,0},
+    {1,0,1.5,0,2,1,1,0,1,0},
+    {1,1,1.5,0,1.5,1,1,0,1,1}
 };
+
+int mov[10][2] = {
+    {8,3},
+    {2,6},
+    {5,3},
+    {9,7},
+    {7,9},
+    {1,3}
+};
+
+int con[10][2] = {
+    {0,0},
+    {9,8},
+    {3,4},
+    {1,7},
+    {7,8},
+    {5,5},
+};
+
+int bl[2][2] = {
+    {2,9},
+    {9,5}
+};
+
+float sl[10][2] = {{0,0},{4,0},{-4,0},{4,-10},{-4,-10},{4,-10},{-4,-10},{-12,-10}};
+int a[] = { 123457, 34, 14567, 34567, 2346, 23567, 12356, 347, 1234567, 234567};
 
 typedef struct VAO {
     GLuint VertexArrayID;
@@ -66,6 +96,12 @@ typedef struct Cube{
     float x,y,z;
     bool d;
 }Cube;
+
+typedef struct Circle{
+    VAO *obj;
+    float x,y,z;
+    bool d;
+}Circle;
 
 typedef struct Flag{
     VAO *obj;
@@ -242,119 +278,15 @@ void draw3DObject (struct VAO* vao)
  * Customizable functions *
  **************************/
 
-VAO *ground, *xaxis, *yaxis, *zaxis;
+VAO *ground, *xaxis, *yaxis, *zaxis, *ammo, *outerammo, *sc1, *sc2;
+Circle circle[2];
 Cube block[10][10];
+Cube mblock[10];
+Cube coin[10];
 Cube player;
 Flag flag;
 float camera_rotation_angle = 90;
 int view = 0;
-/* Executed when a regular key is pressed/released/held-down */
-/* Prefered for Keyboard events */
-void keyboard (GLFWwindow* window, int key, int scancode, int action, int mods)
-{
-    if (action == GLFW_RELEASE) 
-    {
-        switch (key) 
-        {
-            default:
-                break;
-        }
-    }
-    else if (action == GLFW_PRESS || action == GLFW_REPEAT) 
-    {
-        switch (key) 
-        {
-            case GLFW_KEY_V:
-                view = (view + 1)%3;
-                zoom = 0.5f;
-                vz = 0;
-                break;
-            case GLFW_KEY_UP:
-                player.x -= 2*bsize;
-                break;
-            case GLFW_KEY_DOWN:
-                player.x += 2*bsize;
-                break;
-            case GLFW_KEY_LEFT:
-                player.z += 2*bsize;
-                break;
-            case GLFW_KEY_RIGHT:
-                player.z -= 2*bsize;
-                break;
-            case GLFW_KEY_W:
-                zoom -= 0.1;
-                vz -= 1;
-                if( zoom <= 0.1 )
-                    zoom = 0.1;
-                if(vz <= -100)
-                    vz = -100;
-                break;
-            case GLFW_KEY_S:
-                zoom += 0.1;
-                vz += 1;
-                if( zoom >= 1 )
-                    zoom = 1;
-                if(vz >= 50)
-                    vz = 50;
-                break;
-            case GLFW_KEY_ESCAPE:
-                quit(window);
-                break;
-            default:
-                break;
-        }
-    }
-}
-
-/* Executed for character input (like in text boxes) */
-void keyboardChar (GLFWwindow* window, unsigned int key)
-{
-    switch (key) {
-        case 'Q':
-        case 'q':
-            quit(window);
-            break;
-        default:
-            break;
-    }
-}
-
-/* Executed when a mouse button is pressed/released */
-void mouseButton (GLFWwindow* window, int button, int action, int mods)
-{
-    switch (button) {
-        default:
-            break;
-    }
-}
-
-/* Executed when window is resized to 'width' and 'height' */
-/* Modify the bounds of the screen here in glm::ortho or Field of View in glm::Perspective */
-void reshapeWindow (GLFWwindow* window, int width, int height)
-{
-    int fbwidth=width, fbheight=height;
-    /* With Retina display on Mac OS X, GLFW's FramebufferSize
-       is different from WindowSize */
-    glfwGetFramebufferSize(window, &fbwidth, &fbheight);
-
-    GLfloat fov = 120.0;
-
-    // sets the viewport of openGL renderer
-    glViewport (0, 0, (GLsizei) fbwidth, (GLsizei) fbheight);
-
-    // set the projection matrix as perspective
-    /* glMatrixMode (GL_PROJECTION);
-       glLoadIdentity ();
-       gluPerspective (fov, (GLfloat) fbwidth / (GLfloat) fbheight, 0.1, 500.0); */
-    // Store the projection matrix in a variable for future use
-    // Perspective projection for 3D views
-    // Ortho projection for 2D views
-
-    if( view == 2) 
-        Matrices.projection = glm::ortho(zoom*(-width/2) , (width/2)*zoom , zoom*(-height/2), (height/2)*zoom, 1.0f, 300.0f);
-    else
-        Matrices.projection = glm::perspective (fov, (GLfloat) fbwidth / (GLfloat) fbheight, 1.0f, 300.0f);
-}
 
 void createGround  ()
 {
@@ -410,54 +342,42 @@ void createGround  ()
     };
 
     static const GLfloat color_buffer_data [] = {
-        0,0.4,0,
-        0,0.4,0,
-        0,0.4,0,
-
-        0,0.4,0,
-        0,0.4,0,
-        0,0.4,0,
-
-        0,0.4,0,
-        0,0.4,0,
-        0,0.4,0,
-
-        0,0.4,0,
-        0,0.4,0,
-        0,0.4,0,
-
         0.5,0.5,1,
         0.5,0.5,1,
         0.5,0.5,1,
-
         0.5,0.5,1,
         0.5,0.5,1,
         0.5,0.5,1,
-
         0.5,0.5,1,
         0.5,0.5,1,
         0.5,0.5,1,
-
         0.5,0.5,1,
         0.5,0.5,1,
         0.5,0.5,1,
-
-
-        0,0.4,0,
-        0,0.4,0,
-        0,0.4,0,
-
-        0,0.4,0,
-        0,0.4,0,
-        0,0.4,0,
-
-        0,0.4,0,
-        0,0.4,0,
-        0,0.4,0,
-
-        0,0.4,0,
-        0,0.4,0,
-        0,0.4,0,
+        0.5,0.5,1,
+        0.5,0.5,1,
+        0.5,0.5,1,
+        0.5,0.5,1,
+        0.5,0.5,1,
+        0.5,0.5,1,
+        0.5,0.5,1,
+        0.5,0.5,1,
+        0.5,0.5,1,
+        0.5,0.5,1,
+        0.5,0.5,1,
+        0.5,0.5,1,
+        0.5,0.5,1,
+        0.5,0.5,1,
+        0.5,0.5,1,
+        0.5,0.5,1,
+        0.5,0.5,1,
+        0.5,0.5,1,
+        0.5,0.5,1,
+        0.5,0.5,1,
+        0.5,0.5,1,
+        0.5,0.5,1,
+        0.5,0.5,1,
+        0.5,0.5,1,
     };
 
     // create3DObject creates and returns a handle to a VAO that can be used later
@@ -562,117 +482,307 @@ void createPlayer  ()
     player.obj = create3DObject(GL_TRIANGLES, 36, vertex_buffer_data, color_buffer_data, GL_FILL);
 }
 
+void createCoins  ()
+{
+    for(int i = 0 ; i < 6 ; i++)
+    {
+        static const GLfloat vertex_buffer_data [] = {
+            -psize, -psize, psize,
+            psize, -psize, psize,
+            -psize, psize, psize,
+
+            psize, psize, psize,
+            -psize, psize, psize,
+            psize, -psize, psize,
+
+            -psize, -psize, -psize,
+            psize, -psize, -psize,
+            -psize, psize, -psize,
+
+            psize, psize, -psize,
+            -psize, psize, -psize,
+            psize, -psize, -psize,
+
+            -psize, psize, -psize,
+            psize, psize, -psize,
+            -psize, psize, psize,
+
+            psize, psize, psize,
+            -psize, psize, psize,
+            psize, psize, -psize,
+
+            -psize, -psize, -psize,
+            psize, -psize, -psize,
+            -psize, -psize, psize,
+
+            psize, -psize, psize,
+            -psize, -psize, psize,
+            psize, -psize, -psize,
+
+            psize, -psize, -psize,
+            psize, psize, -psize,
+            psize, -psize, psize,
+
+            psize, psize, psize,
+            psize, -psize, psize,
+            psize, psize, -psize,
+
+            -psize, -psize, -psize,
+            -psize, psize, -psize,
+            -psize, -psize, psize,
+
+            -psize, psize, psize,
+            -psize, -psize, psize,
+            -psize, psize, -psize
+        };
+
+        static const GLfloat color_buffer_data [] = {
+            1,1,0, 
+            1,1,0, 
+            1,1,0, 
+            1,1,0, 
+            1,1,0, 
+            1,1,0, 
+            1,1,0, 
+            1,1,0, 
+            1,1,0, 
+            1,1,0, 
+            1,1,0, 
+            1,1,0, 
+            1,1,0, 
+            1,1,0, 
+            1,1,0, 
+            1,1,0, 
+            1,1,0, 
+            1,1,0, 
+            1,1,0, 
+            1,1,0, 
+            1,1,0, 
+            1,1,0, 
+            1,1,0, 
+            1,1,0, 
+            1,1,0, 
+            1,1,0, 
+            1,1,0, 
+            1,1,0, 
+            1,1,0, 
+            1,1,0, 
+            1,1,0, 
+            1,1,0, 
+            1,1,0, 
+            1,1,0, 
+            1,1,0, 
+            1,1,0 
+        };
+
+        coin[i].x = (2*con[i][0]-9)*bsize;
+        coin[i].z = (2*con[i][1]-9)*bsize;
+        coin[i].y = depth+2*maze[con[i][0]][con[i][1]]*bdepth+psize;
+        coin[i].d = true;
+        coin[i].obj = create3DObject(GL_TRIANGLES, 36, vertex_buffer_data, color_buffer_data, GL_FILL);
+    }
+}
+
 void createBlock  ()
 {
     for( int i = 0 ; i < 10 ; i++)
     {
         for( int j = 0 ; j < 10 ; j++)
         {
-            static const GLfloat vertex_buffer_data [] = {
-                -bsize, -bdepth, bsize,
-                bsize, -bdepth, bsize,
-                -bsize, bdepth, bsize,
+            GLfloat vertex_buffer_data [] = {
+                -bsize, -(float)maze[i][j]*bdepth, bsize,
+                bsize, -(float)maze[i][j]*bdepth, bsize,
+                -bsize, (float)maze[i][j]*bdepth, bsize,
 
-                bsize, bdepth, bsize,
-                -bsize, bdepth, bsize,
-                bsize, -bdepth, bsize,
+                bsize, (float)maze[i][j]*bdepth, bsize,
+                -bsize, (float)maze[i][j]*bdepth, bsize,
+                bsize, -(float)maze[i][j]*bdepth, bsize,
 
-                -bsize, -bdepth, -bsize,
-                bsize, -bdepth, -bsize,
-                -bsize, bdepth, -bsize,
+                -bsize, -(float)maze[i][j]*bdepth, -bsize,
+                bsize, -(float)maze[i][j]*bdepth, -bsize,
+                -bsize, (float)maze[i][j]*bdepth, -bsize,
 
-                bsize, bdepth, -bsize,
-                -bsize, bdepth, -bsize,
-                bsize, -bdepth, -bsize,
+                bsize, (float)maze[i][j]*bdepth, -bsize,
+                -bsize, (float)maze[i][j]*bdepth, -bsize,
+                bsize, -(float)maze[i][j]*bdepth, -bsize,
 
-                -bsize, bdepth, -bsize,
-                bsize, bdepth, -bsize,
-                -bsize, bdepth, bsize,
+                -bsize, (float)maze[i][j]*bdepth, -bsize,
+                bsize, (float)maze[i][j]*bdepth, -bsize,
+                -bsize, (float)maze[i][j]*bdepth, bsize,
 
-                bsize, bdepth, bsize,
-                -bsize, bdepth, bsize,
-                bsize, bdepth, -bsize,
+                bsize, (float)maze[i][j]*bdepth, bsize,
+                -bsize, (float)maze[i][j]*bdepth, bsize,
+                bsize, (float)maze[i][j]*bdepth, -bsize,
 
-                -bsize, -bdepth, -bsize,
-                bsize, -bdepth, -bsize,
-                -bsize, -bdepth, bsize,
+                -bsize, -(float)maze[i][j]*bdepth, -bsize,
+                bsize, -(float)maze[i][j]*bdepth, -bsize,
+                -bsize, -(float)maze[i][j]*bdepth, bsize,
 
-                bsize, -bdepth, bsize,
-                -bsize, -bdepth, bsize,
-                bsize, -bdepth, -bsize,
+                bsize, -(float)maze[i][j]*bdepth, bsize,
+                -bsize, -(float)maze[i][j]*bdepth, bsize,
+                bsize, -(float)maze[i][j]*bdepth, -bsize,
 
-                bsize, -bdepth, -bsize,
-                bsize, bdepth, -bsize,
-                bsize, -bdepth, bsize,
+                bsize, -(float)maze[i][j]*bdepth, -bsize,
+                bsize, (float)maze[i][j]*bdepth, -bsize,
+                bsize, -(float)maze[i][j]*bdepth, bsize,
 
-                bsize, bdepth, bsize,
-                bsize, -bdepth, bsize,
-                bsize, bdepth, -bsize,
+                bsize, (float)maze[i][j]*bdepth, bsize,
+                bsize, -(float)maze[i][j]*bdepth, bsize,
+                bsize, (float)maze[i][j]*bdepth, -bsize,
 
-                -bsize, -bdepth, -bsize,
-                -bsize, bdepth, -bsize,
-                -bsize, -bdepth, bsize,
+                -bsize, -(float)maze[i][j]*bdepth, -bsize,
+                -bsize, (float)maze[i][j]*bdepth, -bsize,
+                -bsize, -(float)maze[i][j]*bdepth, bsize,
 
-                -bsize, bdepth, bsize,
-                -bsize, -bdepth, bsize,
-                -bsize, bdepth, -bsize
+                -bsize, (float)maze[i][j]*bdepth, bsize,
+                -bsize, -(float)maze[i][j]*bdepth, bsize,
+                -bsize, (float)maze[i][j]*bdepth, -bsize
             };
 
-            static const GLfloat color_buffer_data [] = {
-                (float)139/255,(float)69/255,(float)19/255,
-                (float)139/255,(float)69/255,(float)19/255,
-                (float)139/255,(float)69/255,(float)19/255,
-
-                (float)139/255,(float)69/255,(float)19/255,
-                (float)139/255,(float)69/255,(float)19/255,
-                (float)139/255,(float)69/255,(float)19/255,
-
-                (float)139/255,(float)69/255,(float)19/255,
-                (float)139/255,(float)69/255,(float)19/255,
-                (float)139/255,(float)69/255,(float)19/255,
-
-                (float)139/255,(float)69/255,(float)19/255,
-                (float)139/255,(float)69/255,(float)19/255,
-                (float)139/255,(float)69/255,(float)19/255,
-
+            GLfloat color_buffer_data [] = {
+                0.5,0.5,1,
+                0.5,0.5,1,
                 0,0.4,0,
                 0,0.4,0,
                 0,0.4,0,
-
+                0.5,0.5,1,
+                0.5,0.5,1,
+                0.5,0.5,1,
                 0,0.4,0,
                 0,0.4,0,
                 0,0.4,0,
-
+                0.5,0.5,1,
                 0,0.4,0,
                 0,0.4,0,
                 0,0.4,0,
-
                 0,0.4,0,
                 0,0.4,0,
                 0,0.4,0,
-
-                (float)139/255,(float)69/255,(float)19/255,
-                (float)139/255,(float)69/255,(float)19/255,
-                (float)139/255,(float)69/255,(float)19/255,
-
-                (float)139/255,(float)69/255,(float)19/255,
-                (float)139/255,(float)69/255,(float)19/255,
-                (float)139/255,(float)69/255,(float)19/255,
-
-                (float)139/255,(float)69/255,(float)19/255,
-                (float)139/255,(float)69/255,(float)19/255,
-                (float)139/255,(float)69/255,(float)19/255,
-
-                (float)139/255,(float)69/255,(float)19/255,
-                (float)139/255,(float)69/255,(float)19/255,
-                (float)139/255,(float)69/255,(float)19/255,
+                0.5,0.5,1,
+                0.5,0.5,1,
+                0.5,0.5,1,
+                0.5,0.5,1,
+                0.5,0.5,1,
+                0.5,0.5,1,
+                0.5,0.5,1,
+                0,0.4,0,
+                0.5,0.5,1,
+                0,0.4,0,
+                0.5,0.5,1,
+                0,0.4,0,
+                0.5,0.5,1,
+                0,0.4,0,
+                0.5,0.5,1,
+                0,0.4,0,
+                0.5,0.5,1,
+                0,0.4,0,
             };
 
             block[i][j].x = (float)(2*i-9)*bsize;
-            block[i][j].y = depth+bdepth;
+            block[i][j].y = depth + (float)maze[i][j]*bdepth;
             block[i][j].z = (float)(2*j-9)*bsize;
             block[i][j].obj = create3DObject(GL_TRIANGLES, 36, vertex_buffer_data, color_buffer_data, GL_FILL);
         }
+    }
+}
+
+void createMBlock  ()
+{
+    for( int i = 0 ; i < 6 ; i++)
+    {
+        static const GLfloat vertex_buffer_data [] = {
+            -bsize, -bdepth, bsize,
+            bsize, -bdepth, bsize,
+            -bsize, bdepth, bsize,
+
+            bsize, bdepth, bsize,
+            -bsize, bdepth, bsize,
+            bsize, -bdepth, bsize,
+
+            -bsize, -bdepth, -bsize,
+            bsize, -bdepth, -bsize,
+            -bsize, bdepth, -bsize,
+
+            bsize, bdepth, -bsize,
+            -bsize, bdepth, -bsize,
+            bsize, -bdepth, -bsize,
+
+            -bsize, bdepth, -bsize,
+            bsize, bdepth, -bsize,
+            -bsize, bdepth, bsize,
+
+            bsize, bdepth, bsize,
+            -bsize, bdepth, bsize,
+            bsize, bdepth, -bsize,
+
+            -bsize, -bdepth, -bsize,
+            bsize, -bdepth, -bsize,
+            -bsize, -bdepth, bsize,
+
+            bsize, -bdepth, bsize,
+            -bsize, -bdepth, bsize,
+            bsize, -bdepth, -bsize,
+
+            bsize, -bdepth, -bsize,
+            bsize, bdepth, -bsize,
+            bsize, -bdepth, bsize,
+
+            bsize, bdepth, bsize,
+            bsize, -bdepth, bsize,
+            bsize, bdepth, -bsize,
+
+            -bsize, -bdepth, -bsize,
+            -bsize, bdepth, -bsize,
+            -bsize, -bdepth, bsize,
+
+            -bsize, bdepth, bsize,
+            -bsize, -bdepth, bsize,
+            -bsize, bdepth, -bsize
+        };
+
+        static const GLfloat color_buffer_data [] = {
+            0.5f,0,0,
+            0.5f,0,0,
+            0.5f,0,0,
+            0.5f,0,0,
+            0.5f,0,0,
+            0.5f,0,0,
+            0.5f,0,0,
+            0.5f,0,0,
+            0.5f,0,0,
+            0.5f,0,0,
+            0.5f,0,0,
+            0.5f,0,0,
+            0.5f,0,0,
+            0.5f,0,0,
+            0.5f,0,0,
+            0.5f,0,0,
+            0.5f,0,0,
+            0.5f,0,0,
+            0.5f,0,0,
+            0.5f,0,0,
+            0.5f,0,0,
+            0.5f,0,0,
+            0.5f,0,0,
+            0.5f,0,0,
+            0.5f,0,0,
+            0.5f,0,0,
+            0.5f,0,0,
+            0.5f,0,0,
+            0.5f,0,0,
+            0.5f,0,0,
+            0.5f,0,0,
+            0.5f,0,0,
+            0.5f,0,0,
+            0.5f,0,0,
+            0.5f,0,0,
+            0.5f,0,0,
+        };
+
+        mblock[i].x = (float)(2*mov[i][0]-9)*bsize;
+        mblock[i].y = depth + bdepth;
+        mblock[i].z = (float)(2*mov[i][1]-9)*bsize;
+        mblock[i].obj = create3DObject(GL_TRIANGLES, 36, vertex_buffer_data, color_buffer_data, GL_FILL);
     }
 }
 
@@ -831,21 +941,484 @@ void createZAxis  ()
     zaxis = create3DObject(GL_LINES, 2, vertex_buffer_data, color_buffer_data, GL_FILL);
 }
 
-void checkBlock ()
+void createCircle ()
 {
-    int i =  (player.x/bsize + 9)/2;
-    int j =  (player.z/bsize + 9)/2;
-    if( !maze[i][j] || i<0 || j<0 || i>=10 || j>=10)
+    for(int j = 0 ; j<2 ; j++ )
     {
-        player.x = 9*bsize;
-        player.z = -9*bsize;
+        GLfloat vertex_buffer_data[2000] = {};
+        GLfloat color_buffer_data[2000] = {};
+
+        vertex_buffer_data[0] = 0;
+        vertex_buffer_data[1] = 0;
+        vertex_buffer_data[2] = 0;
+        color_buffer_data[0] = 0;
+        color_buffer_data[1] = 0;
+        color_buffer_data[2] = 0;
+
+        int i,x;
+        x=3;
+
+        for( i=0;i<361;i++)
+        {
+            vertex_buffer_data[x] = 2*psize*cos(i*M_PI/180);
+            color_buffer_data[x] = 0;
+            x++;
+            vertex_buffer_data[x] = 2*psize*sin(i*M_PI/180);
+            color_buffer_data[x] = 0;
+            x++;
+            vertex_buffer_data[x] = 0;
+            color_buffer_data[x] = 0;
+            x++;
+        }
+
+        circle[j].x = (2*bl[j][0]-9)*bsize;
+        circle[j].y = depth + 2*bdepth + 2*psize;
+        circle[j].z = (2*bl[j][1]-9)*bsize;
+        circle[j].d = true;
+        circle[j].obj = create3DObject(GL_TRIANGLE_FAN, 362, vertex_buffer_data, color_buffer_data, GL_FILL);
     }
+}
+
+void createOuterAmmo ()
+{
+    GLfloat vertex_buffer_data[2000] = {};
+    GLfloat color_buffer_data[2000] = {};
+
+    vertex_buffer_data[0] = 0;
+    vertex_buffer_data[1] = 0;
+    vertex_buffer_data[2] = 0;
+    color_buffer_data[0] = 0;
+    color_buffer_data[1] = 0;
+    color_buffer_data[2] = 0;
+
+    int i,x;
+    x=3;
+
+    for( i=0;i<361;i++)
+    {
+        vertex_buffer_data[x] = 10*cos(i*M_PI/180);
+        color_buffer_data[x] = 0;
+        x++;
+        vertex_buffer_data[x] = 10*sin(i*M_PI/180);
+        color_buffer_data[x] = 0;
+        x++;
+        vertex_buffer_data[x] = 0;
+        color_buffer_data[x] = 0;
+        x++;
+    }
+
+    outerammo = create3DObject(GL_TRIANGLE_FAN, 362, vertex_buffer_data, color_buffer_data, GL_FILL);
+}
+
+void createAmmo ()
+{
+    GLfloat vertex_buffer_data[2000] = {};
+    GLfloat color_buffer_data[2000] = {};
+
+    vertex_buffer_data[0] = 0;
+    vertex_buffer_data[1] = 0;
+    vertex_buffer_data[2] = 0;
+    color_buffer_data[0] = 1;
+    color_buffer_data[1] = 1;
+    color_buffer_data[2] = 1;
+
+    int i,x;
+    x=3;
+
+    for( i=0;i<361;i++)
+    {
+        vertex_buffer_data[x] = 1*cos(i*M_PI/180);
+        color_buffer_data[x] = 1;
+        x++;
+        vertex_buffer_data[x] = 1*sin(i*M_PI/180);
+        color_buffer_data[x] = 1;
+        x++;
+        vertex_buffer_data[x] = 0;
+        color_buffer_data[x] = 1;
+        x++;
+    }
+
+    ammo = create3DObject(GL_TRIANGLE_FAN, 362, vertex_buffer_data, color_buffer_data, GL_FILL);
+}
+
+void createSC1 ()
+{
+    static const GLfloat vertex_buffer_data [] = {
+        0, 0, 0, 
+        2, 0, 0, 
+        0, 10, 0, 
+
+        2, 10, 0, 
+        0, 10, 0, 
+        2 , 0, 0
+    };
+
+    static const GLfloat color_buffer_data [] = {
+        1,1,1, 
+        1,1,1, 
+        1,1,1, 
+
+        1,1,1, 
+        1,1,1, 
+        1,1,1, 
+
+    };
+
+    sc1 = create3DObject(GL_TRIANGLES, 6, vertex_buffer_data, color_buffer_data, GL_FILL);
+}
+
+void createSC2 ()
+{
+    static const GLfloat vertex_buffer_data [] = {
+        0, 0, 0, 
+        12, 0, 0, 
+        0, 2, 0, 
+
+        12, 2, 0, 
+        0, 2, 0, 
+        12 , 0, 0 
+    };
+
+    static const GLfloat color_buffer_data [] = {
+        1,1,1, 
+        1,1,1, 
+        1,1,1, 
+
+        1,1,1, 
+        1,1,1, 
+        1,1,1, 
+
+    };
+
+    sc2 = create3DObject(GL_TRIANGLES, 6, vertex_buffer_data, color_buffer_data, GL_FILL);
 }
 
 void checkFlag ()
 {
-        if(player.x == flag.x && player.z == flag.z)
-            flag.d = false;
+    if((player.x - flag.x)*(player.x - flag.x) + (player.z - flag.z)*(player.z - flag.z) <= 4*psize)
+    {
+        player.x = 9*bsize;
+        player.z = -9*bsize;
+        frot = 45;
+        for( int i = 0 ; i < 6 ; i++ )
+            coin[i].d = true;
+        lives = 8;
+    }
+}
+
+void calculateCoordinates ()
+{
+    player.y = player.y + speed;
+    speed -= g;
+
+    if(player.y <= depth/2)
+    {   
+        printf("Lives : %d\n",lives);
+        lives --;
+        if(lives<0)
+            player.d = false;
+        player.x = 9*bsize;
+        player.z = -9*bsize;
+        frot = 45;
+    }
+}
+
+void checkYCollision ()
+{
+    for( int i = 0 ; i < 10 ; i++)
+        for( int j = 0 ; j < 10 ; j++)
+            if(!maze[i][j])
+                if( player.x >= block[i][j].x - bsize && player.x <= block[i][j].x + bsize && player.z >= block[i][j].z - bsize && player.z <= block[i][j].z + bsize )
+                {
+                    speed = -2;
+                }
+
+    for( int i = 0 ; i < 10 ; i++)
+        for( int j = 0 ; j < 10 ; j++)
+            if(maze[i][j])
+                if( player.x >= block[i][j].x - bsize && player.x <= block[i][j].x + bsize && player.z >= block[i][j].z - bsize && player.z <= block[i][j].z + bsize )
+                {
+                    if( player.y - psize <= block[i][j].y + maze[i][j]*bdepth)
+                    {
+                        player.y = block[i][j].y + psize + maze[i][j]*bdepth;
+                        speed = 0;
+                    }
+                }
+}
+
+void checkMBlockCollision ()
+{
+    for( int i = 0 ; i <5 ; i++)
+        if(( player.x - psize >= mblock[i].x - bsize && player.x - psize <= mblock[i].x + bsize  &&  player.z - psize >= mblock[i].z - bsize && player.z - psize <= mblock[i].z + bsize ) || ( player.x - psize >= mblock[i].x - bsize && player.x - psize <= mblock[i].x + bsize  &&  player.z - psize >= mblock[i].z - bsize && player.z - psize <= mblock[i].z + bsize ))
+        {
+            if( player.y - psize < mblock[i].y + bdepth)
+            {
+                player.y = mblock[i].y + psize + bdepth;
+                speed = 0;
+            }
+        }
+}
+
+void checkWallCollision ()
+{
+    for( int i = 0 ; i < 10 ; i++ )
+        for( int j = 0 ; j < 10 ; j++ )
+            if( player.y - psize < block[i][j].y + maze[i][j]*bdepth)    
+            {
+                if( player.z + psize > block[i][j].z - bsize && player.z + psize < block[i][j].z + bsize && player.x - psize >= block[i][j].x - bsize && player.x + psize <= block[i][j].x + bsize )
+                    player.z = block[i][j].z - bsize - psize;
+                if( player.z - psize > block[i][j].z - bsize && player.z - psize < block[i][j].z + bsize && player.x - psize >= block[i][j].x - bsize && player.x + psize <= block[i][j].x + bsize )
+                    player.z = block[i][j].z + bsize + 2*psize;
+                if( player.x + psize > block[i][j].x - bsize && player.x + psize < block[i][j].x + bsize && player.z - psize >= block[i][j].z - bsize && player.z + psize <= block[i][j].z + bsize )
+                    player.x = block[i][j].x - bsize - psize;
+                if( player.x - psize > block[i][j].x - bsize && player.x - psize < block[i][j].x + bsize && player.z - psize >= block[i][j].z - bsize && player.z + psize <= block[i][j].z + bsize )
+                    player.x = block[i][j].x + bsize + psize;
+            }
+}
+
+void checkCoinCollision ()
+{
+    for( int i = 0 ; i < 6 ; i++ )
+        if(coin[i].d)
+            if( (player.x - coin[i].x)*(player.x - coin[i].x) + (player.y - coin[i].y)*(player.y - coin[i].y) + (player.z - coin[i].z)*(player.z - coin[i].z) <= 4*psize)
+            {
+                coin[i].d = false;
+                score++;
+                printf("Score : %d\n",score);
+            }
+}
+
+void checkBallCollision()
+{
+    for( int i = 0 ; i < 2 ; i++ )
+        if(circle[i].d)
+            if( (player.x - circle[i].x)*(player.x - circle[i].x) + (player.y - circle[i].y)*(player.y - circle[i].y) + (player.z - circle[i].z)*(player.z - circle[i].z) <= 9*psize)
+            {
+                circle[i].d = false;
+                printf("Lives : %d\n",lives);
+                lives --;
+                if(lives<0)
+                    player.d = false;
+                player.x = 9*bsize;
+                player.z = -9*bsize;
+                frot = 45;
+            }
+}
+
+void moveBlocks()
+{
+    if(mblock[0].y >= depth + 4*bdepth)
+        bspeed = -0.5f;
+    else if( mblock[0].y <= depth)
+        bspeed = 0.5f;
+    for(int i = 0 ; i < 6 ; i++ )
+        mblock[i].y += bspeed;
+}
+
+/* Prefered for Keyboard events */
+void keyboard (GLFWwindow* window, int key, int scancode, int action, int mods)
+{
+    if (action == GLFW_RELEASE) 
+    {
+        switch (key) 
+        {
+            default:
+                break;
+        }
+    }
+    else if (action == GLFW_PRESS || action == GLFW_REPEAT) 
+    {
+        switch (key) 
+        {
+            case GLFW_KEY_V:
+                view = (view + 1)%6;
+                zoom = 0.3f;
+                vz = 0;
+                xz = 45;
+                frot = 45;
+                break;
+            case GLFW_KEY_UP:
+                if(view == 4 || view == 5)
+                {
+                    player.x -= psize*cos(frot*M_PI/180);
+                    player.z += psize*sin(frot*M_PI/180);
+                }
+                else
+                    player.x -= psize;
+                checkWallCollision();
+                break;
+            case GLFW_KEY_DOWN:
+                if(view == 4 || view == 5)
+                {
+                    player.x += psize*cos(frot*M_PI/180);
+                    player.z -= psize*sin(frot*M_PI/180);
+                }
+                else
+                    player.x += psize;
+                checkWallCollision();
+                break;
+            case GLFW_KEY_LEFT:
+                if(view == 4 || view == 5)
+                {
+                    player.x -= psize*cos((frot+90)*M_PI/180);
+                    player.z += psize*sin((frot+90)*M_PI/180);
+                }
+                else
+                    player.z += psize;
+                checkWallCollision();
+                break;
+            case GLFW_KEY_RIGHT:
+                if(view == 4 || view == 5)
+                {
+                    player.x += psize*cos((frot+90)*M_PI/180);
+                    player.z -= psize*sin((frot+90)*M_PI/180);
+                }
+                else
+                    player.z -= psize;
+                checkWallCollision();
+                break;
+            case GLFW_KEY_W:
+                zoom -= 0.1;
+                vz -= 1;
+                if( zoom <= 0.1 )
+                    zoom = 0.1;
+                if(vz <= -100)
+                    vz = -100;
+                break;
+            case GLFW_KEY_S:
+                zoom += 0.1;
+                vz += 1;
+                if( zoom >= 1 )
+                    zoom = 1;
+                if(vz >= 50)
+                    vz = 50;
+                break;
+            case GLFW_KEY_A:
+                if(view == 4 || view == 5)
+                    frot += 1;
+                xz -= 1;
+                break;
+            case GLFW_KEY_D:
+                if(view == 4 || view == 5)
+                    frot -= 1;
+                xz += 1;
+                break;
+            case GLFW_KEY_SPACE:
+                speed = 1.5f;
+                break;
+            case GLFW_KEY_ESCAPE:
+                quit(window);
+                break;
+            default:
+                break;
+        }
+    }
+}
+
+/* Executed for character input (like in text boxes) */
+void keyboardChar (GLFWwindow* window, unsigned int key)
+{
+    switch (key) {
+        case 'Q':
+        case 'q':
+            quit(window);
+            break;
+        default:
+            break;
+    }
+}
+
+/* Executed when a mouse button is pressed/released */
+void mouseButton (GLFWwindow* window, int button, int action, int mods)
+{
+    switch (button) 
+    {
+        case GLFW_MOUSE_BUTTON_LEFT:
+            if( action == GLFW_PRESS )
+            {
+                mouse_drag = true;
+                drag_start = true;
+            }
+            if (action == GLFW_RELEASE) 
+            {
+                mouse_drag = false;
+                drag_start = false;
+            }
+            break;
+        default:
+            break;
+    }
+}
+
+void mouseScroll(GLFWwindow* window, double xoffset, double yoffset)
+{
+    if (yoffset > 0) 
+    { 
+        zoom -= 0.1;
+        vz -= 2;
+        if( zoom <= 0.1 )
+            zoom = 0.1;
+        if(vz <= -100)
+            vz = -100;
+    }
+    else 
+    {
+        zoom += 0.1;
+        vz += 2;
+        if( zoom >= 1 )
+            zoom = 1;
+        if(vz >= 50)
+            vz = 50;
+    }
+}
+
+void cursorPos(GLFWwindow *window, double x_position,double y_position)
+{
+    if( drag_start )
+        drag_x = x_position;
+
+    if( mouse_drag )
+    {
+        drag_start = false;
+        if( x_position - drag_x > 0)
+        {
+            frot -= 1;
+            xz -= 1;
+        }
+        else
+        {
+            xz += 1;
+            frot += 1;
+        }
+    }
+}
+
+/* Executed when window is resized to 'width' and 'height' */
+/* Modify the bounds of the screen here in glm::ortho or Field of View in glm::Perspective */
+void reshapeWindow (GLFWwindow* window, int width, int height)
+{
+    int fbwidth=width, fbheight=height;
+    /* With Retina display on Mac OS X, GLFW's FramebufferSize
+       is different from WindowSize */
+    glfwGetFramebufferSize(window, &fbwidth, &fbheight);
+
+    GLfloat fov = 120.0;
+
+    // sets the viewport of openGL renderer
+    glViewport (0, 0, (GLsizei) fbwidth, (GLsizei) fbheight);
+
+    // set the projection matrix as perspective
+    /* glMatrixMode (GL_PROJECTION);
+       glLoadIdentity ();
+       gluPerspective (fov, (GLfloat) fbwidth / (GLfloat) fbheight, 0.1, 500.0); */
+    // Store the projection matrix in a variable for future use
+    // Perspective projection for 3D views
+    // Ortho projection for 2D views
+
+    if( view == 2) 
+        Matrices.projection = glm::ortho(zoom*(-width/2) , (width/2)*zoom , zoom*(-height/2), (height/2)*zoom, 1.0f, 1000.0f);
+    else
+        Matrices.projection = glm::perspective (fov, (GLfloat) fbwidth / (GLfloat) fbheight, 1.0f, 1000.0f);
 }
 
 /* Render the scene with openGL */
@@ -869,21 +1442,27 @@ void draw ( GLFWwindow* window)
 
     // Compute Camera matrix (view)
     // Matrices.view = glm::lookAt( eye, target, up ); // Rotating Camera for 3D
-    //  Don't change unless you are sure!!
+    // Don't change unless you are sure!!
     if(view == 0)
-        Matrices.view = glm::lookAt(glm::vec3(100,150+vz,-100), glm::vec3(0,0,0), glm::vec3(0,1,0)); // Fixed camera for 2D (ortho) in XY plane
+        Matrices.view = glm::lookAt(glm::vec3(100,100,-100), glm::vec3(0,0,0), glm::vec3(0,1,0));
     if(view == 1)
-        Matrices.view = glm::lookAt(glm::vec3(0,0,200), glm::vec3(0,0,0), glm::vec3(0,1,0)); // Fixed camera for 2D (ortho) in XY plane
+        Matrices.view = glm::lookAt(glm::vec3(175*cos(xz*M_PI/180),150+vz,-175*sin(xz*M_PI/180)), glm::vec3(0,0,0), glm::vec3(0,1,0));
     if(view == 2)
-        Matrices.view = glm::lookAt(glm::vec3(0.0001f,100,-0.0001f), glm::vec3(0,0,0), glm::vec3(0,1,0)); // Fixed camera for 2D (ortho) in XY plane
+        Matrices.view = glm::lookAt(glm::vec3(0.0001f,100,0.0f), glm::vec3(0,0,0), glm::vec3(0,1,0)); 
+    if(view == 3)
+        Matrices.view = glm::lookAt(glm::vec3(0,0,200), glm::vec3(0,0,0), glm::vec3(0,1,0)); 
+    if(view == 4)
+        Matrices.view = glm::lookAt(glm::vec3(75*cos(frot*M_PI/180)+player.x,50+player.y+vz,-75*sin(frot*M_PI/180)+player.z), glm::vec3(player.x,player.y,player.z), glm::vec3(0,1,0)); 
+    if(view == 5)
+        Matrices.view = glm::lookAt(glm::vec3(player.x,player.y+3*psize,player.z),glm::vec3(-75*cos(frot*M_PI/180)+player.x,player.y+vz,+75*sin(frot*M_PI/180)+player.z), glm::vec3(0,1,0)); 
 
     // Compute ViewProject matrix as view/camera might not be changed for this frame (basic scenario)
-    //  Don't change unless you are sure!!
+    // Don't change unless you are sure!!
     glm::mat4 VP = Matrices.projection * Matrices.view;
 
     // Send our transformation to the currently bound shader, in the "MVP" uniform
     // For each model you render, since the MVP will be different (at least the M part)
-    //  Don't change unless you are sure!!
+    // Don't change unless you are sure!!
     glm::mat4 MVP;	// MVP = Projection * View * Model
 
     /* Render your scene */
@@ -891,19 +1470,20 @@ void draw ( GLFWwindow* window)
     // Pop matrix to undo transformations till last push matrix instead of recomputing model matrix
     // glPopMatrix ();
 
-    /* Axes */
-    Matrices.model = glm::mat4(1.0f);
-    MVP = VP;
-    glUniformMatrix4fv(Matrices.MatrixID, 1, GL_FALSE, &MVP[0][0]);
-    draw3DObject(xaxis);
-    Matrices.model = glm::mat4(1.0f);
-    MVP = VP;
-    glUniformMatrix4fv(Matrices.MatrixID, 1, GL_FALSE, &MVP[0][0]);
-    draw3DObject(yaxis);
-    Matrices.model = glm::mat4(1.0f);
-    MVP = VP;
-    glUniformMatrix4fv(Matrices.MatrixID, 1, GL_FALSE, &MVP[0][0]);
-    draw3DObject(zaxis);
+    /* Axes 
+       Matrices.model = glm::mat4(1.0f);
+       MVP = VP;
+       glUniformMatrix4fv(Matrices.MatrixID, 1, GL_FALSE, &MVP[0][0]);
+       draw3DObject(xaxis);
+       Matrices.model = glm::mat4(1.0f);
+       MVP = VP;
+       glUniformMatrix4fv(Matrices.MatrixID, 1, GL_FALSE, &MVP[0][0]);
+       draw3DObject(yaxis);
+       Matrices.model = glm::mat4(1.0f);
+       MVP = VP;
+       glUniformMatrix4fv(Matrices.MatrixID, 1, GL_FALSE, &MVP[0][0]);
+       draw3DObject(zaxis);
+       */
 
     /* Ground */ 
     Matrices.model = glm::mat4(1.0f);
@@ -911,6 +1491,7 @@ void draw ( GLFWwindow* window)
     glUniformMatrix4fv(Matrices.MatrixID, 1, GL_FALSE, &MVP[0][0]);
     draw3DObject(ground);
 
+    /* Block */
     for(int i = 0 ; i < 10 ; i++)
     {
         for(int j = 0 ; j < 10 ; j++)
@@ -927,6 +1508,20 @@ void draw ( GLFWwindow* window)
         }
     }
 
+    /* Moving blocks */
+    for(int i = 0 ; i < 6; i++ )
+    {
+        Matrices.model = glm::mat4(1.0f);
+        glm::mat4 translateMBlock = glm::translate (glm::vec3(mblock[i].x,mblock[i].y,mblock[i].z));
+        Matrices.model *= translateMBlock;
+        MVP = VP * Matrices.model;
+        glUniformMatrix4fv(Matrices.MatrixID, 1, GL_FALSE, &MVP[0][0]);
+        draw3DObject(mblock[i].obj);
+    }
+
+    moveBlocks();
+
+    /* Player */
     if( player.d)
     {
         Matrices.model = glm::mat4(1.0f);
@@ -936,9 +1531,15 @@ void draw ( GLFWwindow* window)
         glUniformMatrix4fv(Matrices.MatrixID, 1, GL_FALSE, &MVP[0][0]);
         draw3DObject(player.obj);
 
-        checkBlock();
+        calculateCoordinates();
+        checkYCollision();
+        checkWallCollision();
+        checkMBlockCollision();
+        checkCoinCollision();
+        checkBallCollision();
     }
-    
+
+    /* Flag */
     if( flag.d )
     {
         Matrices.model = glm::mat4(1.0f);
@@ -949,8 +1550,78 @@ void draw ( GLFWwindow* window)
         draw3DObject(flag.obj);
         checkFlag();
     }
-    //camera_rotation_angle++; // Simulating camera rotation
 
+    /*Coin*/
+    for( int i = 0 ; i < 6 ; i++ )
+    {
+        if(coin[i].d)
+        {
+            Matrices.model = glm::mat4(1.0f);
+            glm::mat4 translateCoin = glm::translate (glm::vec3(coin[i].x, coin[i].y, coin[i].z));
+            Matrices.model *= translateCoin;
+            MVP = VP * Matrices.model;
+            glUniformMatrix4fv(Matrices.MatrixID, 1, GL_FALSE, &MVP[0][0]);
+            draw3DObject(coin[i].obj);
+        }
+    }
+
+    /* Ball */
+    for( int j = 0 ; j<2 ; j++ )
+    {
+        if( circle[j].d)
+            for( int i = 0 ; i < 181 ; i++ )
+            {
+                Matrices.model = glm::mat4(1.0f);
+                glm::mat4 translateCircle = glm::translate (glm::vec3(circle[j].x, circle[j].y, circle[j].z));
+                glm::mat4 rotateCircle = glm::rotate((float)(i*M_PI/90.0f), glm::vec3(1,0,0));
+                Matrices.model *= (translateCircle * rotateCircle); 
+                MVP = VP * Matrices.model; 
+                glUniformMatrix4fv(Matrices.MatrixID, 1, GL_FALSE, &MVP[0][0]);
+                draw3DObject(circle[j].obj);
+            }
+    }
+
+    /* Outer Ammo */
+    Matrices.model = glm::mat4(1.0f);
+    glm::mat4 translateOAmmo = glm::translate (glm::vec3(-12*bsize, depth + 0.5, 12*bsize)); // glTranslatef
+    glm::mat4 rotateOAmmo = glm::rotate((float)(M_PI/2), glm::vec3(1,0,0));
+    Matrices.model *= (translateOAmmo * rotateOAmmo); 
+    MVP = VP * Matrices.model; // MVP = p * V * M
+    glUniformMatrix4fv(Matrices.MatrixID, 1, GL_FALSE, &MVP[0][0]);
+    draw3DObject(outerammo);
+
+    for( int i = 0 ; i < lives ; i++ )
+    {
+        createAmmo();
+        Matrices.model = glm::mat4(1.0f);
+        glm::mat4 translateAmmo = glm::translate (glm::vec3(-12*bsize + 8*cos(i*(M_PI/4)), depth + 1, 12*bsize + 8*sin(i*(M_PI/4)))); // glTranslatef
+        glm::mat4 rotateAmmo = glm::rotate((float)(M_PI/2), glm::vec3(1,0,0));
+        Matrices.model *= (translateAmmo * rotateAmmo) ; 
+        MVP = VP * Matrices.model; // MVP = p * V * M
+        glUniformMatrix4fv(Matrices.MatrixID, 1, GL_FALSE, &MVP[0][0]);
+        draw3DObject(ammo);
+    }
+
+    /* Score */
+    int yo = a[score];
+
+    while( yo )
+    {
+        createSC1();
+        createSC2();
+        Matrices.model = glm::mat4(1.0f);
+        glm::mat4 translateRect = glm::translate (glm::vec3( -12*bsize + sl[yo%10][0], depth + 0.5, -12*bsize + sl[yo%10][1])); // glTranslatef
+        glm::mat4 rotateRect1 = glm::rotate((float)(M_PI/2), glm::vec3(1,0,0));
+        glm::mat4 rotateRect2 = glm::rotate((float)(M_PI/2), glm::vec3(0,0,1));
+        Matrices.model *=  (translateRect * rotateRect1 * rotateRect2);
+        MVP = VP * Matrices.model;
+        glUniformMatrix4fv(Matrices.MatrixID, 1, GL_FALSE, &MVP[0][0]);
+        if( yo%10 < 5 )
+            draw3DObject(sc1);
+        else
+            draw3DObject(sc2);
+        yo  /= 10;
+    }
 }
 
 /* Initialise glfw window, I/O callbacks and the renderer to use */
@@ -998,6 +1669,12 @@ GLFWwindow* initGLFW (int width, int height)
     /* Register function to handle mouse click */
     glfwSetMouseButtonCallback(window, mouseButton);  // mouse button clicks
 
+    /* Register function to handle mouse scroll*/
+    glfwSetScrollCallback(window,mouseScroll);
+
+    /* Register function to handle cursor position*/
+    glfwSetCursorPosCallback(window, cursorPos);
+
     return window;
 }
 
@@ -1012,9 +1689,13 @@ void initGL (GLFWwindow* window, int width, int height)
     createYAxis();
     createZAxis();
     createBlock();
+    createMBlock();
     createGround();
     createPlayer();
     createFlag();
+    createCoins();
+    createCircle();
+    createOuterAmmo();
 
     // Create and compile our GLSL program from the shaders
     programID = LoadShaders( "Sample_GL.vert", "Sample_GL.frag" );
