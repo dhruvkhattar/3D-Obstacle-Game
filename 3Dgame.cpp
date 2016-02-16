@@ -24,7 +24,7 @@ float bdepth = 10.0f;
 float vz = 0.0f;
 float xz = 45.0f;
 float frot = 45.0f;
-float zoom = 0.5f;
+float zoom = 0.6f;
 float pan = 0;
 float g = 0.07f;
 float speed = 0.0f;
@@ -1245,7 +1245,7 @@ void keyboard (GLFWwindow* window, int key, int scancode, int action, int mods)
         {
             case GLFW_KEY_V:
                 view = (view + 1)%6;
-                zoom = 0.3f;
+                zoom = 0.6f;
                 vz = 0;
                 xz = 45;
                 frot = 45;
@@ -1459,7 +1459,7 @@ void draw ( GLFWwindow* window)
     if(view == 0)
         Matrices.view = glm::lookAt(glm::vec3(100,100,-100), glm::vec3(0,0,0), glm::vec3(0,1,0));
     if(view == 1)
-        Matrices.view = glm::lookAt(glm::vec3(175*cos(xz*M_PI/180),150+vz,-175*sin(xz*M_PI/180)), glm::vec3(0,0,0), glm::vec3(0,1,0));
+        Matrices.view = glm::lookAt(glm::vec3(zoom*175*cos(xz*M_PI/180),zoom*(150+vz),-175*sin(xz*M_PI/180)*zoom), glm::vec3(0,0,0), glm::vec3(0,1,0));
     if(view == 2)
         Matrices.view = glm::lookAt(glm::vec3(0.0001f,100,0.0f), glm::vec3(0,0,0), glm::vec3(0,1,0)); 
     if(view == 3)
