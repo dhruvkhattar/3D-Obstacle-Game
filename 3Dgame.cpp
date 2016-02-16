@@ -2,6 +2,7 @@
 #include <sys/time.h>
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
+#include <irrKlang.h>
 
 #define GLM_FORCE_RADIANS
 #include <glm/glm.hpp>
@@ -9,6 +10,8 @@
 #include <glm/gtc/matrix_transform.hpp>
 
 using namespace std;
+using namespace irrklang;
+ISoundEngine *SoundEngine = createIrrKlangDevice();
 
 float width = 1280.0f;
 float height = 720.0f;
@@ -1097,6 +1100,7 @@ void checkFlag ()
 {
     if((player.x - flag.x)*(player.x - flag.x) + (player.z - flag.z)*(player.z - flag.z) <= 4*psize)
     {
+        SoundEngine->play2D("win.mp3", GL_FALSE);
         player.x = 9*bsize;
         player.z = -9*bsize;
         frot = 45;
@@ -1112,11 +1116,15 @@ void calculateCoordinates ()
     speed -= g;
 
     if(player.y <= depth/2)
-    {   
+    {  
+        SoundEngine->play2D("die.mp3", GL_FALSE);
         printf("Lives : %d\n",lives);
         lives --;
         if(lives<0)
+        {
+            SoundEngine->play2D("go.mp3", GL_FALSE);
             player.d = false;
+        }
         player.x = 9*bsize;
         player.z = -9*bsize;
         frot = 45;
@@ -1168,7 +1176,7 @@ void checkWallCollision ()
                 if( player.z + psize > block[i][j].z - bsize && player.z + psize < block[i][j].z + bsize && player.x - psize >= block[i][j].x - bsize && player.x + psize <= block[i][j].x + bsize )
                     player.z = block[i][j].z - bsize - psize;
                 if( player.z - psize > block[i][j].z - bsize && player.z - psize < block[i][j].z + bsize && player.x - psize >= block[i][j].x - bsize && player.x + psize <= block[i][j].x + bsize )
-                    player.z = block[i][j].z + bsize + 2*psize;
+                    player.z = block[i][j].z + bsize + psize;
                 if( player.x + psize > block[i][j].x - bsize && player.x + psize < block[i][j].x + bsize && player.z - psize >= block[i][j].z - bsize && player.z + psize <= block[i][j].z + bsize )
                     player.x = block[i][j].x - bsize - psize;
                 if( player.x - psize > block[i][j].x - bsize && player.x - psize < block[i][j].x + bsize && player.z - psize >= block[i][j].z - bsize && player.z + psize <= block[i][j].z + bsize )
@@ -1182,6 +1190,7 @@ void checkCoinCollision ()
         if(coin[i].d)
             if( (player.x - coin[i].x)*(player.x - coin[i].x) + (player.y - coin[i].y)*(player.y - coin[i].y) + (player.z - coin[i].z)*(player.z - coin[i].z) <= 4*psize)
             {
+                SoundEngine->play2D("coin.mp3", GL_FALSE);
                 coin[i].d = false;
                 score++;
                 printf("Score : %d\n",score);
@@ -1194,11 +1203,15 @@ void checkBallCollision()
         if(circle[i].d)
             if( (player.x - circle[i].x)*(player.x - circle[i].x) + (player.y - circle[i].y)*(player.y - circle[i].y) + (player.z - circle[i].z)*(player.z - circle[i].z) <= 9*psize)
             {
+                SoundEngine->play2D("boom.mp3", GL_FALSE);
                 circle[i].d = false;
                 printf("Lives : %d\n",lives);
                 lives --;
                 if(lives<0)
+                {
+                    SoundEngine->play2D("go.mp3", GL_FALSE);
                     player.d = false;
+                }
                 player.x = 9*bsize;
                 player.z = -9*bsize;
                 frot = 45;
@@ -1450,7 +1463,7 @@ void draw ( GLFWwindow* window)
     if(view == 2)
         Matrices.view = glm::lookAt(glm::vec3(0.0001f,100,0.0f), glm::vec3(0,0,0), glm::vec3(0,1,0)); 
     if(view == 3)
-        Matrices.view = glm::lookAt(glm::vec3(0,0,200), glm::vec3(0,0,0), glm::vec3(0,1,0)); 
+        Matrices.view = glm::lookAt(glm::vec3(300*cos(xz*M_PI/180),0,300*sin(xz*M_PI/180)), glm::vec3(0,0,0), glm::vec3(0,1,0)); 
     if(view == 4)
         Matrices.view = glm::lookAt(glm::vec3(75*cos(frot*M_PI/180)+player.x,50+player.y+vz,-75*sin(frot*M_PI/180)+player.z), glm::vec3(player.x,player.y,player.z), glm::vec3(0,1,0)); 
     if(view == 5)
@@ -1724,7 +1737,7 @@ int main (int argc, char** argv)
     initGL (window, width, height);
 
     double last_update_time = glfwGetTime(), current_time;
-
+    SoundEngine->play2D("bg.mp3", GL_TRUE);
     /* Draw in loop */
     while (!glfwWindowShouldClose(window)) {
 
